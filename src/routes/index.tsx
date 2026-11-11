@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { motion, useScroll, useSpring, useTransform, AnimatePresence } from "motion/react";
 import { Suspense, lazy, useEffect, useState } from "react";
 import {
-  Phone, Mail, Linkedin, MapPin, ShieldCheck, Cpu, Network, Code2, ArrowUpRight, Award, GraduationCap, Briefcase, Printer, Copy, X, ExternalLink, Check, FileText,
+  Phone, Mail, Linkedin, MapPin, ShieldCheck, Cpu, Network, Code2, ArrowUpRight, Award, GraduationCap, Briefcase, Printer, Copy, X, ExternalLink, Check, FileText, Settings,
 } from "lucide-react";
 import { AdminProvider } from "@/lib/admin";
+import { PortfolioContentProvider, usePortfolioContent } from "@/lib/portfolio-content";
 import { Reveal, GlassCard, ease } from "@/components/portfolio/Motion";
 import fotoPerfil from "@/assets/perfil/foto.png";
 import certCisco from "@/../certificados/DEFESA DE REDE-CISCO.pdf";
@@ -13,6 +14,7 @@ import certSuporte from "@/../certificados/SUPORTE DE TI-COURSERA.pdf";
 // Lazy load admin components to keep them out of the public bundle for non-admin users
 const AdminButton = lazy(() => import("@/components/portfolio/AdminUI").then(m => ({ default: m.AdminButton })));
 const CategoryUpdates = lazy(() => import("@/components/portfolio/AdminUI").then(m => ({ default: m.CategoryUpdates })));
+const AdminEditorButton = lazy(() => import("@/components/portfolio/AdminEditor").then(m => ({ default: m.AdminEditorButton })));
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -46,7 +48,9 @@ export const Route = createFileRoute("/")({
   }),
   component: () => (
     <AdminProvider>
-      <Portfolio />
+      <PortfolioContentProvider>
+        <Portfolio />
+      </PortfolioContentProvider>
     </AdminProvider>
   ),
 });
@@ -70,7 +74,7 @@ const SKILLS = [
     chips: ["Desenvolvimento Web", "Vercel (CI/CD Deploy)", "Neon (PostgreSQL)", "VS Code & Claude Code", "Gestão de Estoque TI"] },
 ];
 
-const COURSES = [
+const COURSES: [string, string, string][] = [
   ["Téc. em Desenvolvimento de Sistemas", "IFSUDESTEMG", "Cursando"],
   ["Téc. em Eletrotécnica", "FIRJAN-SENAI", "Cursando"],
   ["Suporte de TI (Google IT Support)", "Coursera / Google", "Cursando"],
@@ -94,6 +98,7 @@ const EMAIL_PROVIDERS = [
 ];
 
 function Portfolio() {
+  const { content } = usePortfolioContent();
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
   const heroY = useTransform(scrollYProgress, [0, 0.3], [0, -80]);
@@ -156,6 +161,7 @@ function Portfolio() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          <Suspense fallback={null}><AdminEditorButton /></Suspense>
           <Suspense fallback={null}><AdminButton /></Suspense>
           <a href="https://wa.me/5521965253742" target="_blank" rel="noreferrer" className="bg-gradient-primary shadow-glow rounded-full px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]">
             Contato
@@ -170,21 +176,27 @@ function Portfolio() {
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.6, ease }}
               className="glass inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-xs text-muted-foreground">
               <span className="relative flex h-2 w-2"><span className="animate-pulse-dot absolute h-full w-full rounded-full bg-accent" /><span className="relative h-2 w-2 rounded-full bg-accent" /></span>
-              Disponível · Suporte Técnico / Help Desk
+              {content.hero.availability}
             </motion.div>
             <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.02] sm:text-7xl">
-              {["Wesley Sousa", "de Oliveira"].map((line, i) => (
-                <span key={line} className="block overflow-hidden pb-1">
-                  <motion.span className={`block ${i === 1 ? "text-gradient" : ""}`} initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ delay: 0.3 + i * 0.12, duration: 0.9, ease }}>
-                    {line}
-                  </motion.span>
-                </span>
-              ))}
+              {(() => {
+                const parts = content.hero.name.split(" ");
+                const firstLine = parts.slice(0, 2).join(" ");
+                const secondLine = parts.slice(2).join(" ") || "";
+                const lines = secondLine ? [firstLine, secondLine] : [firstLine];
+                return lines.map((line, i) => (
+                  <span key={i} className="block overflow-hidden pb-1">
+                    <motion.span className={`block ${i === 1 ? "text-gradient" : ""}`} initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ delay: 0.3 + i * 0.12, duration: 0.9, ease }}>
+                      {line}
+                    </motion.span>
+                  </span>
+                ));
+              })()}
             </h1>
             <Reveal delay={0.6}>
-              <p className="mt-5 text-lg font-medium text-foreground/90">Técnico de Suporte de TI · Hardware, Redes & Atendimento ao Usuário</p>
+              <p className="mt-5 text-lg font-medium text-foreground/90">{content.hero.title}</p>
               <p className="mt-4 max-w-xl leading-relaxed text-muted-foreground">
-                Experiência prática em manutenção de hardware, suporte a usuários e diagnóstico de sistemas Windows e Linux. Traduzo problemas técnicos em soluções simples, com fundamentos sólidos em TCP/IP, DNS, DHCP, Active Directory e segurança da informação.
+                {content.hero.description}
               </p>
               <div className="mt-7 flex flex-wrap gap-2.5">
                 {[
@@ -265,17 +277,17 @@ function Portfolio() {
               </div>
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl bg-secondary/60 p-4">
-                  <div className="text-gradient font-display text-4xl font-extrabold">8</div>
-                  <div className="mt-1 text-xs text-muted-foreground">anos de suporte técnico & logística (Exército)</div>
+                  <div className="text-gradient font-display text-4xl font-extrabold">{content.hero.yearsExperience}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{content.hero.experienceLabel}</div>
                 </div>
                 <div className="rounded-2xl bg-secondary/60 p-4">
-                  <div className="text-gradient font-display text-4xl font-extrabold">Cisco</div>
-                  <div className="mt-1 text-xs text-muted-foreground">Network Defense · IDS/IPS</div>
+                  <div className="text-gradient font-display text-4xl font-extrabold">{content.hero.certificationHighlight}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{content.hero.certificationLabel}</div>
                 </div>
               </div>
               <div className="mt-4 rounded-2xl border border-border p-4 text-sm text-muted-foreground">
                 <span className="font-semibold text-foreground">Objetivo · </span>
-                Vaga de Suporte Técnico / Help Desk em empresa que valorize disciplina, aprendizado contínuo e evolução técnica.
+                {content.hero.objective}
               </div>
               <button onClick={() => window.print()} aria-label="Imprimir ou salvar como PDF" className="mt-4 inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-primary">
                 <Printer className="h-3.5 w-3.5" /> Imprimir / salvar PDF
@@ -287,12 +299,12 @@ function Portfolio() {
         {/* Skills */}
         <Section id="competencias" kicker="Stack técnica" title="Competências & Ferramentas" sub="Disponibilidade de sistemas, suporte ao usuário e infraestrutura.">
           <div className="grid gap-5 md:grid-cols-3">
-            {SKILLS.map((s, i) => (
-              <Reveal key={s.n} delay={i * 0.1} className="h-full">
+            {content.skills.map((s, i) => (
+              <Reveal key={s.id} delay={i * 0.1} className="h-full">
                 <GlassCard className="flex h-full flex-col p-6">
                   <div className="flex items-center justify-between">
-                    <span className="bg-gradient-primary grid h-11 w-11 place-items-center rounded-2xl text-primary-foreground"><s.icon className="h-5 w-5" /></span>
-                    <span className="font-mono text-sm text-muted-foreground">{s.n}</span>
+                    <span className="bg-gradient-primary grid h-11 w-11 place-items-center rounded-2xl text-primary-foreground"><Settings className="h-5 w-5" /></span>
+                    <span className="font-mono text-sm text-muted-foreground">0{i + 1}</span>
                   </div>
                   <div className="mt-5 font-mono text-[11px] uppercase tracking-[0.18em] text-primary">{s.tag}</div>
                   <h3 className="mt-1 font-display text-lg font-bold">{s.title}</h3>
@@ -309,53 +321,51 @@ function Portfolio() {
 
         {/* Experience */}
         <Section id="experiencia" kicker="Trajetória" title="Experiência Profissional" sub="Histórico prático em infraestrutura crítica.">
-          <Reveal>
-            <GlassCard className="p-6 sm:p-8">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex items-start gap-4">
-                  <span className="bg-gradient-primary grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-primary-foreground"><Briefcase className="h-5 w-5" /></span>
-                  <div>
-                    <h3 className="font-display text-xl font-bold">Suporte Técnico — Exército Brasileiro</h3>
-                    <p className="text-sm text-muted-foreground">Presencial · Infraestrutura de TI, Almoxarifado Técnico & Segurança</p>
+          {content.experiences.map((exp) => (
+            <Reveal key={exp.id}>
+              <GlassCard className="p-6 sm:p-8">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-start gap-4">
+                    <span className="bg-gradient-primary grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-primary-foreground"><Briefcase className="h-5 w-5" /></span>
+                    <div>
+                      <h3 className="font-display text-xl font-bold">{exp.role} — {exp.company}</h3>
+                      <p className="text-sm text-muted-foreground">{exp.location}</p>
+                    </div>
                   </div>
+                  <span className="glass rounded-full px-3 py-1 font-mono text-xs">{exp.period}</span>
                 </div>
-                <span className="glass rounded-full px-3 py-1 font-mono text-xs">2018 – 2026 · 8 anos</span>
-              </div>
-              <Bullets items={[
-                "Manutenção preventiva e corretiva de microcomputadores, com diagnóstico de hardware e software, reduzindo o tempo de inatividade dos equipamentos.",
-                "Controle de estoque de materiais de TI e suprimentos por meio de gestão logística, garantindo rastreabilidade e organização do almoxarifado.",
-                "Controle de acesso a sistemas e instalações críticas por meio de escalas de segurança, assegurando conformidade com protocolos rigorosos.",
-              ]} />
-              <Chips items={["Diagnóstico de Hardware", "Redução de Downtime", "Gestão Logística de TI", "Controle de Acesso"]} />
-            </GlassCard>
-          </Reveal>
+                <Bullets items={exp.bullets} />
+                <Chips items={exp.chips} />
+              </GlassCard>
+            </Reveal>
+          ))}
           <CategoryUpdates category="experiencia" />
         </Section>
 
         {/* Projects */}
         <Section id="projetos" kicker="Em produção" title="Projetos" sub="Entregas reais, do código ao deploy.">
-          <Reveal>
-            <GlassCard className="p-6 sm:p-8">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex items-start gap-4">
-                  <span className="bg-gradient-primary grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-primary-foreground"><Code2 className="h-5 w-5" /></span>
-                  <div>
-                    <h3 className="font-display text-xl font-bold">Desenvolvedor Web — japerivoolivre.com.br</h3>
-                    <p className="text-sm text-muted-foreground">Projeto independente · Full-Stack & Cloud Deploy</p>
+          {content.projects.map((proj) => (
+            <Reveal key={proj.id}>
+              <GlassCard className="p-6 sm:p-8">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-start gap-4">
+                    <span className="bg-gradient-primary grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-primary-foreground"><Code2 className="h-5 w-5" /></span>
+                    <div>
+                      <h3 className="font-display text-xl font-bold">{proj.title}</h3>
+                      <p className="text-sm text-muted-foreground">{proj.subtitle}</p>
+                    </div>
                   </div>
+                  {proj.url && (
+                    <a href={proj.url} target="_blank" rel="noreferrer" className="bg-gradient-primary inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]">
+                      Acessar site <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  )}
                 </div>
-                <a href="https://japerivoolivre.com.br" target="_blank" rel="noreferrer" className="bg-gradient-primary inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]">
-                  Acessar site <ArrowUpRight className="h-4 w-4" />
-                </a>
-              </div>
-              <Bullets items={[
-                "Desenvolvi um site funcional do zero com VS Code e IA generativa (Claude Code), entregando uma aplicação web completa em produção.",
-                "Implementei hospedagem e deploy contínuo na Vercel, garantindo disponibilidade e atualização ágil.",
-                "Estruturei a persistência de dados com Neon (PostgreSQL), viabilizando o funcionamento dinâmico do site.",
-              ]} />
-              <Chips items={["VS Code", "Claude Code (IA)", "Vercel CI/CD", "Neon PostgreSQL"]} />
-            </GlassCard>
-          </Reveal>
+                <Bullets items={proj.bullets} />
+                <Chips items={proj.chips} />
+              </GlassCard>
+            </Reveal>
+          ))}
           <CategoryUpdates category="projetos" />
         </Section>
 
@@ -375,24 +385,24 @@ function Portfolio() {
               <GlassCard className="p-6">
                 <div className="mb-4 flex items-center gap-2 font-display font-semibold"><GraduationCap className="h-5 w-5 text-primary" /> Formação, cursos & qualificações</div>
                 <ul className="divide-y divide-border">
-                  {COURSES.map(([t, o, s], i) => (
+                  {content.courses.map((course, i) => (
                     <motion.li
-                      key={t}
+                      key={course.id}
                       initial={{ opacity: 0, x: -10 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: i * 0.05, duration: 0.5, ease }}
                       className="flex cursor-pointer items-center justify-between gap-3 py-2.5 transition-colors hover:bg-secondary/30"
                       onClick={() => {
-                        const cert = CERTIFICATES.find(c => c.name.includes(t.split("(")[0].trim()) || t.includes(c.name));
-                        if (cert) setSelectedCert(cert);
+                        const match = CERTIFICATES.find(c => course.title.includes(c.name) || c.name.includes(course.title));
+                        if (match) setSelectedCert(match);
                       }}
                     >
                       <div>
-                        <div className="text-sm font-medium">{t}</div>
-                        <div className="text-xs text-muted-foreground">{o}</div>
+                        <div className="text-sm font-medium">{course.title}</div>
+                        <div className="text-xs text-muted-foreground">{course.org}</div>
                       </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 font-mono text-[11px] ${s === "Cursando" ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"}`}>{s}</span>
+                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 font-mono text-[11px] ${course.status === "Cursando" ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"}`}>{course.status}</span>
                     </motion.li>
                   ))}
                 </ul>
@@ -421,35 +431,32 @@ function Portfolio() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-2 sm:p-4"
             onClick={() => setSelectedCert(null)}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="glass-strong relative max-h-[90vh] max-w-4xl overflow-auto rounded-3xl p-6 shadow-2xl"
+            <div
+              className="glass-strong relative flex flex-col overflow-hidden rounded-3xl shadow-2xl"
+              style={{ width: 800, maxWidth: '95vw', height: 600, maxHeight: '90vh' }}
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setSelectedCert(null)}
-                className="absolute right-4 top-4 rounded-full bg-secondary/50 p-2 transition-colors hover:bg-secondary/80"
+                className="absolute right-3 top-3 z-10 rounded-full bg-secondary/60 p-2 transition-colors hover:bg-secondary/90 sm:right-4 sm:top-4"
               >
                 <X className="h-5 w-5" />
               </button>
-              <div className="mb-4">
-                <h3 className="font-display text-2xl font-bold">{selectedCert.name}</h3>
-                <p className="text-sm text-muted-foreground">{selectedCert.issuer} · {selectedCert.year}</p>
+              <div className="mb-2 pr-10 sm:mb-3">
+                <h3 className="font-display text-lg font-bold sm:text-xl">{selectedCert.name}</h3>
+                <p className="text-xs text-muted-foreground">{selectedCert.issuer} · {selectedCert.year}</p>
               </div>
-              <div className="rounded-2xl bg-secondary/30 p-4">
+              <div className="min-h-0 flex-1 overflow-hidden rounded-xl bg-secondary/30 p-1 sm:p-2">
                 <iframe
                   src={selectedCert.file}
-                  className="aspect-video w-full rounded-xl bg-background/50"
+                  className="h-full w-full rounded-lg bg-white"
                   title={selectedCert.name}
                 />
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
